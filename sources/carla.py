@@ -880,8 +880,9 @@ class CarlaEnvSettings:
                             self.spawned_car_npcs[car_actor.id] = [car_actor, colsensor]
 
                     # Tick a weather and set it in Carla
-                    self.weather.tick(self.speed_factor)
-                    self.world.set_weather(self.weather.weather)
+                    # Commented out to disable weather changes
+                    #self.weather.tick(self.speed_factor)
+                    #self.world.set_weather(self.weather.weather)
 
                     # Set stats for tensorboard
                     self.stats[0] = len(self.spawned_car_npcs)
