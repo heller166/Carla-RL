@@ -298,23 +298,28 @@ class CarlaEnv:
 
         done = False
 
-        # If car collided - end and episode and send back a penalty
-        if len(self.collision_hist) != 0:
-            done = True
-            reward = -1
+        is_collision = len(self.collision_hist) != 0
 
         # Reward
-        elif settings.WEIGHT_REWARDS_WITH_SPEED == 'discrete':
-            reward = settings.SPEED_MIN_REWARD if kmh < 50 else settings.SPEED_MAX_REWARD
+        if settings.WEIGHT_REWARDS_WITH_SPEED == 'discrete':
+            speed_reward = settings.SPEED_MIN_REWARD if kmh < 50 else settings.SPEED_MAX_REWARD
 
         elif settings.WEIGHT_REWARDS_WITH_SPEED == 'linear':
-            reward = kmh * (settings.SPEED_MAX_REWARD - settings.SPEED_MIN_REWARD) / 100 + settings.SPEED_MIN_REWARD
+            speed_reward = 50 if kmh > 50 else kmh
 
         elif settings.WEIGHT_REWARDS_WITH_SPEED == 'quadratic':
-            reward = (kmh / 100) ** 1.3 * (settings.SPEED_MAX_REWARD - settings.SPEED_MIN_REWARD) + settings.SPEED_MIN_REWARD
+            speed_reward = (kmh / 100) ** 1.3 * (
+                    settings.SPEED_MAX_REWARD - settings.SPEED_MIN_REWARD) + settings.SPEED_MIN_REWARD
 
-        # If episode duration limit reached - send back a terminal state
-        if not self.playing and self.episode_start + self.seconds_per_episode.value < time.time():
+        else:
+            raise Exception("No recognized reward type specified")
+
+        reward = speed_reward \
+                 - is_collision * 100 \
+                 - np.abs(self.vehicle.get_control().steer) * 10
+
+        # If episode duration limit reached or if collision occured- send back a terminal state
+        if is_collision or (not self.playing and self.episode_start + self.seconds_per_episode.value < time.time()):
             done = True
 
         # Weights rewards (not for terminal state)
