@@ -752,8 +752,13 @@ class CarlaEnvSettings:
                             while agent_pause.value != 2:
                                 time.sleep(0.1)
 
+                        # Load default map. was previously random. Using only one map in the hopes that this will
+                        # decrease train time due to a smaller state space
+                        map_choice = self.client.get_world().get_map().name
                         # Get random map and load it
-                        map_choice = random.choice(list({map.split('/')[-1] for map in self.client.get_available_maps()} - {self.client.get_world().get_map().name}))
+                        # map_choice = random.choice(list(
+                        #                       {map.split('/')[-1] for map in self.client.get_available_maps()}
+                        #                       - {self.client.get_world().get_map().name}))
                         self.client.load_world(map_choice)
 
                         # Wait for world to be fully loaded
