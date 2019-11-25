@@ -3,10 +3,7 @@ from sources import operating_system, STOP
 import glob
 import os
 import sys
-try:
-    sys.path.append(glob.glob(settings.CARLA_PATH + f'/PythonAPI/carla/dist/carla-*{sys.version_info.major}.{sys.version_info.minor}-{"win-amd64" if os.name == "nt" else "linux-x86_64"}.egg')[0])
-except IndexError:
-    pass
+sys.path.append(settings.CARLA_PATH + '/PythonAPI/carla/dist/carla-0.9.6-py3.5-linux-x86_64.egg')
 import carla
 import time
 import random
