@@ -182,14 +182,26 @@ class CarlaEnv:
         # Collision history is a list callback is going to append to (we brake simulation on a collision)
         self.collision_hist = []
 
-        # Get the blueprint of the sensor
+        # Get the blueprint of the collision sensor
         colsensor = self.world.get_blueprint_library().find('sensor.other.collision')
+
+        # Get the blueprint of the lane invasion sensor
+        laneinv_sensor = self.world.get_blueprint_library().find('sensor.other.lane_invasion')
+
+        # Create the lane invasion sensor and attach ot to a car
+        self.laneinv_sensor = self.world.spawn_actor(laneinv_sensor, carla.Transform(), attach_to=self.vehicle)
 
         # Create the collision sensor and attach ot to a car
         self.colsensor = self.world.spawn_actor(colsensor, carla.Transform(), attach_to=self.vehicle)
 
-        # Register a callback called every time sensor sends a new data
+        # Register a callback called every time lane invasion sensor sends a new data
+        self.laneinv_sensor.listen(self._laneinv_data)
+
+        # Register a callback called every time collision sensor sends a new data
         self.colsensor.listen(self._collision_data)
+
+        # Add the lane invasion sensor to the list of actors
+        self.actor_list.append(self.laneinv_sensor)
 
         # Add the collision sensor to the list of actors
         self.actor_list.append(self.colsensor)
@@ -209,6 +221,10 @@ class CarlaEnv:
 
         # Return first observation space - current image from the camera sensor
         return [self.front_camera, 0]
+
+    # Lane invasion data callback handler
+    def _laneinv_data(self, event):
+        pass
 
     # Collidion data callback handler
     def _collision_data(self, event):
