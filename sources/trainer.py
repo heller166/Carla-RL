@@ -13,16 +13,16 @@ from threading import Thread
 
 # Try to mute and then load Tensorflow
 # Muting seems to not work lately on Linux in any way
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-stdin = sys.stdin
-sys.stdin = open(os.devnull, 'w')
-stderr = sys.stderr
-sys.stderr = open(os.devnull, 'w')
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#stdin = sys.stdin
+#sys.stdin = open(os.devnull, 'w')
+#stderr = sys.stderr
+#sys.stderr = open(os.devnull, 'w')
 import tensorflow as tf
-tf.logging.set_verbosity(tf.logging.ERROR)
+#tf.logging.set_verbosity(tf.logging.ERROR)
 import keras.backend.tensorflow_backend as backend
-sys.stdin = stdin
-sys.stderr = stderr
+#sys.stdin = stdin
+#sys.stderr = stderr
 
 
 # Trainer class

@@ -12,18 +12,18 @@ import cv2
 
 # Try to mute and then load Tensorflow and Keras
 # Muting seems to not work lately on Linux in any way
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-stdin = sys.stdin
-sys.stdin = open(os.devnull, 'w')
-stderr = sys.stderr
-sys.stderr = open(os.devnull, 'w')
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#stdin = sys.stdin
+#sys.stdin = open(os.devnull, 'w')
+#stderr = sys.stderr
+#sys.stderr = open(os.devnull, 'w')
 import tensorflow as tf
-tf.logging.set_verbosity(tf.logging.ERROR)
+#tf.logging.set_verbosity(tf.logging.ERROR)
 import keras.backend.tensorflow_backend as backend
 from keras.optimizers import Adam
 from keras.models import load_model, Model
-sys.stdin = stdin
-sys.stderr = stderr
+#sys.stdin = stdin
+#sys.stderr = stderr
 
 
 # Agent class
