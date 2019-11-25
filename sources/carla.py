@@ -27,6 +27,7 @@ class ACTIONS:
     brake_right = 7
     no_action = 8
 
+
 ACTION_CONTROL = {
     0: [1, 0, 0],
     1: [0, 0, -1],
@@ -54,7 +55,6 @@ ACTIONS_NAMES = {
 
 # Carla environment
 class CarlaEnv:
-
     # How much steering to apply
     STEER_AMT = 1.0
 
@@ -156,7 +156,9 @@ class CarlaEnv:
             self.preview_cam.set_attribute('fov', '110')
 
             # Set camera sensor relative to a car
-            transform = carla.Transform(carla.Location(x=self.preview_camera_enabled[2], y=self.preview_camera_enabled[3], z=self.preview_camera_enabled[4]))
+            transform = carla.Transform(
+                carla.Location(x=self.preview_camera_enabled[2], y=self.preview_camera_enabled[3],
+                               z=self.preview_camera_enabled[4]))
 
             # Attach camera sensor to a car, so it will keep relative difference to it
             self.preview_sensor = self.world.spawn_actor(self.preview_cam, transform, attach_to=self.vehicle)
@@ -213,7 +215,8 @@ class CarlaEnv:
 
         # What we collided with and what was the impulse
         collision_actor_id = event.other_actor.type_id
-        collision_impulse = math.sqrt(event.normal_impulse.x ** 2 + event.normal_impulse.y ** 2 + event.normal_impulse.z ** 2)
+        collision_impulse = math.sqrt(
+            event.normal_impulse.x ** 2 + event.normal_impulse.y ** 2 + event.normal_impulse.z ** 2)
 
         # Filter collisions
         for actor_id, impulse in settings.COLLISION_FILTER:
@@ -268,11 +271,14 @@ class CarlaEnv:
 
         # Apply control to the vehicle based on an action
         if self.actions[action] != ACTIONS.no_action:
-            self.vehicle.apply_control(carla.VehicleControl(throttle=ACTION_CONTROL[self.actions[action]][0], steer=ACTION_CONTROL[self.actions[action]][2]*self.STEER_AMT, brake=ACTION_CONTROL[self.actions[action]][1]))
+            self.vehicle.apply_control(carla.VehicleControl(throttle=ACTION_CONTROL[self.actions[action]][0],
+                                                            steer=ACTION_CONTROL[self.actions[action]][
+                                                                      2] * self.STEER_AMT,
+                                                            brake=ACTION_CONTROL[self.actions[action]][1]))
 
         # Calculate speed in km/h from car's velocity (3D vector)
         v = self.vehicle.get_velocity()
-        kmh = 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
+        kmh = 3.6 * math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
 
         done = False
 
@@ -335,7 +341,6 @@ def get_exec_command():
 
 # tries to close, and if that does not work to kill all carla processes
 def kill_processes():
-
     binary = get_binary()
 
     # Iterate processes and terminate carla ones
@@ -369,7 +374,8 @@ def start(playing=False):
         print('Starting Carla...')
         kill_processes()
         for process_no in range(1 if playing else settings.CARLA_HOSTS_NO):
-            subprocess.Popen(get_exec_command()[1] + f' -carla-rpc-port={settings.CARLA_HOSTS[process_no][1]}', cwd=settings.CARLA_PATH, shell=True)
+            subprocess.Popen(get_exec_command()[1] + f' -carla-rpc-port={settings.CARLA_HOSTS[process_no][1]}',
+                             cwd=settings.CARLA_PATH, shell=True)
             time.sleep(2)
 
     # Else just wait for it to be ready
@@ -392,14 +398,15 @@ def start(playing=False):
                     carla.Client(*settings.CARLA_HOSTS[process_no][:2]).load_world(map_choice)
                     while True:
                         try:
-                            while carla.Client(*settings.CARLA_HOSTS[process_no][:2]).get_world().get_map().name != map_choice:
+                            while carla.Client(
+                                    *settings.CARLA_HOSTS[process_no][:2]).get_world().get_map().name != map_choice:
                                 time.sleep(0.1)
                             break
                         except:
                             pass
                 break
             except Exception as e:
-                #print(str(e))
+                # print(str(e))
                 time.sleep(0.1)
 
 
@@ -408,7 +415,8 @@ def restart(playing=False):
     # Kill Carla processes if there are any and start simulator
     if settings.CARLA_HOSTS_TYPE == 'local':
         for process_no in range(1 if playing else settings.CARLA_HOSTS_NO):
-            subprocess.Popen(get_exec_command()[1] + f' -carla-rpc-port={settings.CARLA_HOSTS[process_no][1]}', cwd=settings.CARLA_PATH, shell=True)
+            subprocess.Popen(get_exec_command()[1] + f' -carla-rpc-port={settings.CARLA_HOSTS[process_no][1]}',
+                             cwd=settings.CARLA_PATH, shell=True)
             time.sleep(2)
 
     # Wait for Carla Simulator to be ready
@@ -428,7 +436,8 @@ def restart(playing=False):
                     carla.Client(*settings.CARLA_HOSTS[process_no][:2]).load_world(map_choice)
                     while True:
                         try:
-                            while carla.Client(*settings.CARLA_HOSTS[process_no][:2]).get_world().get_map().name != map_choice:
+                            while carla.Client(
+                                    *settings.CARLA_HOSTS[process_no][:2]).get_world().get_map().name != map_choice:
                                 time.sleep(0.1)
                                 retries += 1
                                 if retries >= 60:
@@ -442,7 +451,7 @@ def restart(playing=False):
 
                 break
             except Exception as e:
-                #print(str(e))
+                # print(str(e))
                 time.sleep(0.1)
 
             retries += 1
@@ -532,6 +541,7 @@ CARLA_SETTINGS_STATE_MESSAGE = {
     4: 'ERROR',
 }
 
+
 # Carla settings class
 class CarlaEnvSettings:
 
@@ -570,7 +580,12 @@ class CarlaEnvSettings:
         self.world_name = None
 
         # Controls world reloads
-        self.reload_world_every = None if len(settings.CARLA_HOSTS[process_no]) == 2 or not settings.CARLA_HOSTS[process_no][2] or not isinstance(settings.CARLA_HOSTS[process_no][2], int) else (settings.CARLA_HOSTS[process_no][2] + random.uniform(-settings.CARLA_HOSTS[process_no][2]/10, settings.CARLA_HOSTS[process_no][2]/10))*60
+        self.reload_world_every = None if len(settings.CARLA_HOSTS[process_no]) == 2 or not \
+            settings.CARLA_HOSTS[process_no][2] or not \
+            isinstance(settings.CARLA_HOSTS[process_no][2], int) \
+            else (settings.CARLA_HOSTS[process_no][2] + random.uniform(-settings.CARLA_HOSTS[process_no][2] / 10,
+                                                                       settings.CARLA_HOSTS[process_no][2] / 10)) * 60
+
         self.next_world_reload = None if self.reload_world_every is None else time.time() + self.reload_world_every
 
         # List of communications objects allowing Carla to pause agents (on changes like world change)
@@ -747,7 +762,6 @@ class CarlaEnvSettings:
 
                     # Handle all registered collisions
                     while not self.collisions.empty():
-
                         # Gets first collision from the queue
                         collision = self.collisions.get()
 
@@ -785,7 +799,6 @@ class CarlaEnvSettings:
                     # If we reached despawn tick, remove oldest NPC
                     # The reson we want to do that is to rotate cars aroubd the map
                     if car_despawn_tick >= self.car_npcs[1] and len(self.spawned_car_npcs):
-
                         # Get id of the first car on a list and destroy it
                         car_npc = list(self.spawned_car_npcs.keys())[0]
                         self._destroy_car_npc(car_npc)
@@ -831,7 +844,8 @@ class CarlaEnvSettings:
                                     continue
 
                             # Create the collision sensor and attach it to the car
-                            colsensor = self.world.spawn_actor(self.collision_sensor, carla.Transform(), attach_to=car_actor)
+                            colsensor = self.world.spawn_actor(self.collision_sensor, carla.Transform(),
+                                                               attach_to=car_actor)
 
                             # Register a callback called every time sensor sends a new data
                             colsensor.listen(self._collision_data)
@@ -861,5 +875,5 @@ class CarlaEnvSettings:
 
                 # In case of error, report it (reset flag set externally might break this loop only)
                 except Exception as e:
-                    #print(str(e))
+                    # print(str(e))
                     self.state = CARLA_SETTINGS_STATE.error
