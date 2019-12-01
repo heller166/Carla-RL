@@ -1,6 +1,7 @@
 import os
 import sys
 import settings
+import numpy as np
 
 # Try to mute and then load Tensorflow and Keras
 # Muting seems to not work lately on Linux in any way
@@ -13,7 +14,8 @@ import tensorflow as tf
 #tf.logging.set_verbosity(tf.logging.ERROR)
 from keras.applications.xception import Xception
 from keras.models import Sequential, Model
-from keras.layers import Dense, GlobalAveragePooling2D, Input, Concatenate, Conv2D, AveragePooling2D, Activation, Flatten
+from keras.layers import Dense, GlobalAveragePooling2D, Input, Concatenate, \
+    Conv2D, AveragePooling2D, Activation, Flatten, concatenate
 #sys.stdin = stdin
 #sys.stderr = stderr
 
@@ -234,8 +236,63 @@ def model_base_5_wide_CNN_noact(input_shape):
 
     return input, cnn_5_gap
 
+
+# 32x3 model, model of state feature extraction. Should be used for both DDPG and DDQN
+# Different head are used for the actor and critic parts of this model.
+def model_base_32x3_cnn(input_shape):
+    input = Input(shape=input_shape)
+
+    out = Conv2D(32, (3, 3), padding='same')(input)
+    out = Activation('relu')(out)
+    out = AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same')(out)
+
+    out = Conv2D(32, (3, 3), padding='same')(out)
+    out = Activation('relu')(out)
+    out = AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same')(out)
+
+    out = Conv2D(32, (3, 3), padding='same')(out)
+    out = Activation('relu')(out)
+    out = AveragePooling2D(pool_size=(5, 5), strides=(3, 3), padding='same')(out)
+
+    out = Flatten()(out)
+
+    return input, out
+
+
 # ---
 # Model heads
+
+# head for ddpg and ddqn actor networks
+def model_head_actor_dd_networks(model_input, model_output, outputs, model_settings):
+    return model_head_common_critic_and_actor(model_input, model_output, outputs, model_settings)
+
+
+# head for ddpg and ddqn critic networks
+# adds extra input layer after conv layers to input action information
+def model_head_critic_dd_networks(model_input, model_output, outputs, model_settings):
+    action_input = Input(shape=(model_settings['action_dim'],))
+
+    merged_output = concatenate([model_output, action_input])
+    merged_input = [model_input, action_input]
+
+    return model_head_common_critic_and_actor(merged_input, merged_output, outputs, model_settings)
+
+
+# Common model head for critic and actor. Two fully connected layers with 200 units.
+def model_head_common_critic_and_actor(model_input, model_output, outputs, model_settings):
+
+    prediction = Dense(200, activation='relu')(model_output)
+
+    # init weights and biases to ensure policy and values estimates are near zero
+    weights = np.random.uniform(low=-3e-4, high=3e4, size=(200, outputs))
+    biases = np.random.uniform(low=-3e-4, high=3e4, size=(outputs,))
+
+    prediction = Dense(outputs, activation='tanh', weights=[weights, biases])(prediction)
+
+    model = Model(inputs=model_input, outputs=prediction)
+
+    return model
+
 
 def model_head_hidden_dense(model_input, model_output, outputs, model_settings):
 

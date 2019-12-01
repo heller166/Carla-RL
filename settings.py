@@ -9,13 +9,15 @@ IMG_WIDTH = 480
 IMG_HEIGHT = 270
 CAR_NPCS = 50
 RESET_CAR_NPC_EVERY_N_TICKS = 1  # Resets one car NPC every given number of ticks, tick is about a second
-ACTIONS = ['forward', 'forward_left', 'forward_right', 'brake', 'brake_left', 'brake_right']  # ['forward', 'left', 'right', 'forward_left', 'forward_right', 'backwards', 'backwards_left', 'backwards_right']
+#ACTIONS = ['forward', 'forward_left', 'forward_right', 'brake', 'brake_left', 'brake_right']  # ['forward', 'left', 'right', 'forward_left', 'forward_right', 'backwards', 'backwards_left', 'backwards_right']
+ACTIONS = ['forward', 'brake']  # ['forward', 'left', 'right', 'forward_left', 'forward_right', 'backwards', 'backwards_left', 'backwards_right']
 WEIGHT_REWARDS_WITH_EPISODE_PROGRESS = False  # Linearly weights rewards from 0 to 1 with episode progress (from 0 up to SECONDS_PER_EPISODE)
 WEIGHT_REWARDS_WITH_SPEED = 'linear'  # 'discrete': -1 < 50kmh, 1 otherwise, 'linear': 0..50 with 0..50kmh else 50, 'quadratic': -1..1 with 0..100kmh with formula: (speed / 100) ** 1.3 * 2 - 1
 SPEED_MIN_REWARD = -1
 SPEED_MAX_REWARD = 1
 PREVIEW_CAMERA_RES = [[640, 400, -5, 0, 2.5], [1280, 800, -5, 0, 2.5]]  # Available resolutions from "above the car" preview camera [width, height, x, y, z], where x, y and z are related to car position
 COLLISION_FILTER = [['static.sidewalk', -1], ['static.road', -1], ['vehicle.', 500]]  # list of pairs: agent id (can be part of the name) and impulse value allowed (-1 - disable collision detection entirely)
+ALGORITHM = 'ddpg' #Either ddqn, ddpg or dqn
 
 # Agent settings
 AGENTS = 2
@@ -33,11 +35,12 @@ MINIBATCH_SIZE = 16  # How many steps (samples) to use for training
 PREDICTION_BATCH_SIZE = 1  # How many samples to predict at once (the more, the faster)
 TRAINING_BATCH_SIZE = MINIBATCH_SIZE // 2  # How many samples to fit at once (the more, the faster) - should be MINIBATCH_SIZE divided by power of 2
 UPDATE_TARGET_EVERY = 100  # Terminal states (end of episodes)
-MODEL_NAME = '5_residual_#CNN_KERNELS#'  # model name, prefixed from sources/models.py, #MODEL_ARCHITECTURE# adds model architectore acronym, #CNN_KERNELS# adds number of kernels from all CNN layers
+MODEL_NAME = '32x3_cnn_#CNN_KERNELS#'  # model name, prefixed from sources/models.py, #MODEL_ARCHITECTURE# adds model architectore acronym, #CNN_KERNELS# adds number of kernels from all CNN layers
 MIN_REWARD = 100  # For model save
 TRAINER_MEMORY_FRACTION = 0.6
 TRAINER_GPU = 0  # None - not set, 0, 1, ... - GPU with given index
 SAVE_CHECKPOINT_EVERY = 100  # episodes
+TAU = 0.001
 
 # DQN settings
 DISCOUNT = 0.99
@@ -50,9 +53,11 @@ EPSILON_DECAY = 0.99995  # 0.99975
 MIN_EPSILON = 0.1
 
 # Model settings
-MODEL_BASE = '5_residual_CNN'  # from models.py
+MODEL_BASE = '32x3_cnn'  # from models.py
 MODEL_HEAD = 'hidden_dense'  # from models.py
-MODEL_SETTINGS = {'hidden_1_units': 256}  # 'hidden_1_units': 1024 for Xception
+MODEL_HEAD_CRITIC = 'critic_dd_networks'
+MODEL_HEAD_ACTOR = 'actor_dd_networks'
+MODEL_SETTINGS = {'action_dim': 2}  # 'hidden_1_units': 1024 for Xception
 
 # Optimizer settings
 OPTIMIZER_LEARNING_RATE = 0.001
@@ -60,7 +65,7 @@ OPTIMIZER_DECAY = 0.0
 
 # Conv Cam
 CONV_CAM_LAYER = 'auto_act'  # 'auto' - finds and uses last activation layer, 'auto_act' - uses Activation layer after last convolution layer if exists
-CONV_CAM_AGENTS = [1]
+CONV_CAM_AGENTS = []
 
 # Console settings
 SHOW_CARLA_ENV_SETTINGS = False

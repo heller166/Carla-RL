@@ -98,8 +98,11 @@ class CarlaEnv:
         # Used with additional preview feature
         self.preview_camera_enabled = False
 
+        # Steps where |steering| > 0.2
+        self.steps_hard_steering = 0
+
         # Sets actually configured actions
-        self.actions = [getattr(ACTIONS, action) for action in settings.ACTIONS]
+        #self.actions = [getattr(ACTIONS, action) for action in settings.ACTIONS]
 
     # Resets environment for new episode
     def reset(self):
@@ -286,11 +289,17 @@ class CarlaEnv:
             raise Exception('Missing updates from Carla')
 
         # Apply control to the vehicle based on an action
-        if self.actions[action] != ACTIONS.no_action:
-            self.vehicle.apply_control(carla.VehicleControl(throttle=ACTION_CONTROL[self.actions[action]][0],
-                                                            steer=ACTION_CONTROL[self.actions[action]][
-                                                                      2] * self.STEER_AMT,
-                                                            brake=ACTION_CONTROL[self.actions[action]][1]))
+        #if self.actions[action] != ACTIONS.no_action:
+        #    self.vehicle.apply_control(carla.VehicleControl(throttle=ACTION_CONTROL[self.actions[action]][0],
+        #                                                    steer=ACTION_CONTROL[self.actions[action]][
+        #                                                              2] * self.STEER_AMT,
+        #                                                    brake=ACTION_CONTROL[self.actions[action]][1]))
+
+        # Continuous control. actions is array with two elements. first element from -1 to 1 is throttle and brake.
+        # Second element from -1 to 1 is steer
+        self.vehicle.apply_control(carla.VehicleControl(throttle=action[0] if action[0] >= 0 else 0,
+                                                        steer=action[1],
+                                                        brake=-action[0] if action[0] <= 0  else 0))
 
         # Calculate speed in km/h from car's velocity (3D vector)
         v = self.vehicle.get_velocity()
@@ -305,7 +314,7 @@ class CarlaEnv:
             speed_reward = settings.SPEED_MIN_REWARD if kmh < 50 else settings.SPEED_MAX_REWARD
 
         elif settings.WEIGHT_REWARDS_WITH_SPEED == 'linear':
-            speed_reward = 50 if kmh > 50 else kmh
+            speed_reward = kmh
 
         elif settings.WEIGHT_REWARDS_WITH_SPEED == 'quadratic':
             speed_reward = (kmh / 100) ** 1.3 * (
@@ -316,7 +325,13 @@ class CarlaEnv:
 
         reward = speed_reward \
                  - is_collision * 100 \
-                 - np.abs(self.vehicle.get_control().steer) * 10
+                 - self.steps_hard_steering
+
+        if abs(self.vehicle.get_control().steer) > 0.2:
+            self.steps_hard_steering += 1
+        else:
+            self.steps_hard_steering = 0
+
 
         # If episode duration limit reached or if collision occured- send back a terminal state
         if is_collision or (not self.playing and self.episode_start + self.seconds_per_episode.value < time.time()):

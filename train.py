@@ -37,10 +37,12 @@ if __name__ == '__main__':
 
     # Spawn limited trainer process and get weights' size
     print('Calculating weights size...')
-    weights_size = Value('L', 0)
-    p = Process(target=check_weights_size, args=(hparams['model_path'] if hparams else False, weights_size), daemon=True)
+    weights_size_actor = Value('L', 0)
+    weights_size_critic = Value('L', 0)
+    p = Process(target=check_weights_size, args=(hparams['model_path'] if hparams else False,
+                                                 weights_size_actor, weights_size_critic), daemon=True)
     p.start()
-    while weights_size.value == 0:
+    while weights_size_actor.value == 0 or weights_size_critic.value == 0:
         time.sleep(0.01)
     p.join()
 
@@ -60,7 +62,8 @@ if __name__ == '__main__':
             agent_show_preview.append(Array('f', [(agent + 1) in settings.AGENT_SHOW_PREVIEW, 0, 0, 0, 0, 0]))
     save_checkpoint_every = Value('L', hparams['save_checkpoint_every'] if hparams else settings.SAVE_CHECKPOINT_EVERY)
     seconds_per_episode = Value('L', hparams['seconds_per_episode'] if hparams else settings.SECONDS_PER_EPISODE)
-    weights = Array('c', weights_size.value)
+    weights_actor = Array('c', weights_size_actor.value)
+    weights_critic = Array('c', weights_size_critic.value)
     weights_iteration = Value('L', hparams['weights_iteration'] if hparams else 0)
     transitions = Queue()
     tensorboard_stats = Queue()
@@ -104,7 +107,7 @@ if __name__ == '__main__':
 
     # Start trainer process
     print('Starting trainer...')
-    trainer_process = Process(target=run_trainer, args=(hparams['model_path'] if hparams else False, hparams['logdir'] if hparams else False, stop, weights, weights_iteration, episode, epsilon, discount, update_target_every, last_target_update, min_reward, agent_show_preview, save_checkpoint_every, seconds_per_episode, duration, transitions, tensorboard_stats, trainer_stats, episode_stats, optimizer, hparams['models'] if hparams else [], car_npcs, carla_settings_stats, carla_fps), daemon=True)
+    trainer_process = Process(target=run_trainer, args=(hparams['model_path'] if hparams else False, hparams['logdir'] if hparams else False, stop, weights_actor, weights_critic, weights_iteration, episode, epsilon, discount, update_target_every, last_target_update, min_reward, agent_show_preview, save_checkpoint_every, seconds_per_episode, duration, transitions, tensorboard_stats, trainer_stats, episode_stats, optimizer, hparams['models'] if hparams else [], car_npcs, carla_settings_stats, carla_fps), daemon=True)
     trainer_process.start()
 
     # Wait for trainer to be ready, it needs to, for example, dump weights that agents are going to update
@@ -116,7 +119,7 @@ if __name__ == '__main__':
     agents = []
     for agent in range(settings.AGENTS):
         carla_instance = 1 if not len(settings.AGENT_CARLA_INSTANCE) or settings.AGENT_CARLA_INSTANCE[agent] > settings.CARLA_HOSTS_NO else settings.AGENT_CARLA_INSTANCE[agent]
-        p = Process(target=run_agent, args=(agent, carla_instance-1, stop, pause_agents[agent], episode, epsilon, agent_show_preview[agent], weights, weights_iteration, transitions, tensorboard_stats, agent_stats[agent], carla_frametimes_list[carla_instance-1], seconds_per_episode), daemon=True)
+        p = Process(target=run_agent, args=(agent, carla_instance-1, stop, pause_agents[agent], episode, epsilon, agent_show_preview[agent], weights_actor, weights_critic, weights_iteration, transitions, tensorboard_stats, agent_stats[agent], carla_frametimes_list[carla_instance-1], seconds_per_episode), daemon=True)
         p.start()
         agents.append(p)
 
