@@ -10,6 +10,7 @@ from collections import deque
 from threading import Thread
 from dataclasses import dataclass
 import cv2
+import imageio
 
 # Try to mute and then load Tensorflow and Keras
 # Muting seems to not work lately on Linux in any way
@@ -93,7 +94,7 @@ class ARTDDPGAgent(BaseAgent):
                                 if is_actor else 'model_head_' + settings.MODEL_HEAD_CRITIC)(
             *model_base, outputs=len(settings.ACTIONS) if is_actor else 1, model_settings=settings.MODEL_SETTINGS)
 
-        # self._extract_model_info(model)
+        self._extract_model_info(model)
 
         # We need to compile model only for training purposes, agents do not compile their models
         if not prediction:
@@ -249,6 +250,8 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
                            1 if settings.AGENT_IMG_TYPE == AGENT_IMAGE_TYPE.grayscaled else 3)), [0]], actions)
 
     agent_stats[0] = AGENT_STATE.playing
+
+    gif_images = []
 
     # Play as long as there is no 'stop' command being issued
     while stop.value != STOP.stopping:
@@ -413,6 +416,8 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
 
             # Show a preview if set (env)
             if show_preview[0] == 1:
+                if episode.value % 1000 == 0:
+                    gif_images.append(new_state[0])
                 cv2.imshow(f'Agent {id+1} - preview', new_state[0])
                 cv2.waitKey(1)
                 env.preview_camera_enabled = False
@@ -500,6 +505,9 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
 
         # We need to check for 'done' flag as episode might end because of an error
         if done:
+            if episode.value % 1000 == 0:
+                imageio.mimsave('gifs/ddpg_{}.gif'.format(episode.value), gif_images, fps=20)
+            gif_images = []
 
             # Duration of current episode
             episode_time = episode_end - episode_start

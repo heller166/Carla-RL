@@ -1,9 +1,9 @@
 # Carla environment settings
 CARLA_PATH = '/home/juan/Documents/carla_0_9'  # Path to Carla root folder
 CARLA_HOSTS_TYPE = 'local'  # 'local' or 'remote', 'local' means that script can start and restart Carla Simulator
-CARLA_HOSTS_NO = 2
-CARLA_HOSTS = [['localhost', 2000, 'Town01'], ['localhost', 2002, 'Town01']]  # List of hosts and ports and worlds to use, at least 2 ports of difference as Carla uses N and N+1 port, Town01 to Town97 for world currently, Town01 to Town07 for world are currently available, int number instead - random world change interval in minutes
-SECONDS_PER_EPISODE = 60
+CARLA_HOSTS_NO = 1
+CARLA_HOSTS = [['localhost', 2008, 'Town01']]  # List of hosts and ports and worlds to use, at least 2 ports of difference as Carla uses N and N+1 port, Town01 to Town97 for world currently, Town01 to Town07 for world are currently available, int number instead - random world change interval in minutes
+SECONDS_PER_EPISODE = 10
 EPISODE_FPS = 60  # Desired
 IMG_WIDTH = 480
 IMG_HEIGHT = 270
@@ -20,15 +20,15 @@ COLLISION_FILTER = [['static.sidewalk', -1], ['static.road', -1], ['vehicle.', 5
 ALGORITHM = 'ddpg' #Either ddqn, ddpg or dqn
 
 # Agent settings
-AGENTS = 2
+AGENTS = 1
 AGENT_MEMORY_FRACTION = 0.1
 AGENT_GPU = 0 # None, a number (to use given GPU for all agents) or a list - example [0, 1, 1] (first agent - GPU 0, 2nd and 3rd GPU 1)
-AGENT_CARLA_INSTANCE = [1, 2]  # Empty list for first Carla instance or list in size of AGENTS with Carla instance bounds for agents, for excample [1, 1, 2, 2]
+AGENT_CARLA_INSTANCE = [1]  # Empty list for first Carla instance or list in size of AGENTS with Carla instance bounds for agents, for excample [1, 1, 2, 2]
 UPDATE_WEIGHTS_EVERY = 0  # How frequently to update weights (compared to trainer fits), 0 for episode start only
-AGENT_SHOW_PREVIEW = [1, 2]  # List of agent id's so show a preview, or empty list
+AGENT_SHOW_PREVIEW = [1]  # List of agent id's so show a preview, or empty list
 AGENT_SYNCED = True  # Synchronizes agent with frame updates from Carla
 AGENT_IMG_TYPE = 'stacked'  # 'rgb', 'grayscaled' or 'stacked' (stacks last 3 consecutive grayscaled frames)
-AGENT_ADDITIONAL_DATA = ['kmh']  # What additional data to include next to image data in observation space, possible values: kmh
+#AGENT_ADDITIONAL_DATA = ['kmh']  # What additional data to include next to image data in observation space, possible values: kmh
 
 # Trainer settings
 MINIBATCH_SIZE = 16  # How many steps (samples) to use for training
@@ -37,7 +37,7 @@ TRAINING_BATCH_SIZE = MINIBATCH_SIZE // 2  # How many samples to fit at once (th
 UPDATE_TARGET_EVERY = 100  # Terminal states (end of episodes)
 MODEL_NAME = '32x3_cnn_#CNN_KERNELS#'  # model name, prefixed from sources/models.py, #MODEL_ARCHITECTURE# adds model architectore acronym, #CNN_KERNELS# adds number of kernels from all CNN layers
 MIN_REWARD = 100  # For model save
-TRAINER_MEMORY_FRACTION = 0.6
+TRAINER_MEMORY_FRACTION = 0.3
 TRAINER_GPU = 0  # None - not set, 0, 1, ... - GPU with given index
 SAVE_CHECKPOINT_EVERY = 100  # episodes
 TAU = 0.001
@@ -46,6 +46,7 @@ TAU = 0.001
 DISCOUNT = 0.99
 REPLAY_MEMORY_SIZE = 20_000  # How many last steps to keep for model training
 MIN_REPLAY_MEMORY_SIZE = 5_000  # Minimum number of steps in a memory to start training
+#MIN_REPLAY_MEMORY_SIZE = 32  # Minimum number of steps in a memory to start training
 
 # Exploration settings
 START_EPSILON = 1

@@ -27,22 +27,24 @@ import keras.backend.tensorflow_backend as backend
 
 # Trainer class
 class ARTDDPGTrainer(ARTDDPGAgent):
-    def __init__(self, model_path):
+    def __init__(self, model_path, sess):
 
+        self.sess = sess
         # If model path is beiong passed in - use it instead of creating a new one
         self.model_path = model_path
 
         # Main model (agent does not use target model)
         self.actor = self.create_model(is_actor=True)
         self.critic = self.create_model(is_actor=False)
-        self.action_grads = backend.function(self.critic.inputs,
+        self.action_grads = backend.function([self.critic.input[0], self.critic.input[1]],
                                              backend.gradients(self.critic.output, [self.critic.inputs[1]]))
 
         action_gdts = backend.placeholder(shape=(None, len(settings.ACTIONS)))
         params_grad = tf.gradients(self.actor.output, self.actor.trainable_weights, -action_gdts)
         grads = zip(params_grad, self.actor.trainable_weights)
         self.actor_optimizer = backend.function([self.actor.input, action_gdts],
-                                                [tf.train.AdamOptimizer(self.get_lr_decay()[0]).apply_gradients(grads)])
+                                                [tf.train.AdamOptimizer(self.get_lr_decay()[0])
+                                                .apply_gradients(grads)])
 
         self.tau = settings.TAU
 
@@ -130,10 +132,12 @@ class ARTDDPGTrainer(ARTDDPGAgent):
         new_current_states = [np.array([transition[3][0] for transition in minibatch])/255]
 
         with self.graph.as_default():
+            backend.set_session(self.sess)
             future_actions_list = self.target_actor.predict(new_current_states, settings.PREDICTION_BATCH_SIZE)
 
         with self.graph.as_default():
-            future_qs_list = self.target_critic.predict([new_current_states, future_actions_list],
+            backend.set_session(self.sess)
+            future_qs_list = self.target_critic.predict([new_current_states[0], future_actions_list],
                                                         settings.PREDICTION_BATCH_SIZE)
 
         states_normalized_input = []
@@ -169,7 +173,8 @@ class ARTDDPGTrainer(ARTDDPGAgent):
 
         # Fit on all samples as one batch
         with self.graph.as_default():
-            self.critic.fit(np.array([states_normalized_input, actions_input]), np.array(critic_target),
+            backend.set_session(self.sess)
+            self.critic.fit([np.array(states_normalized_input), np.array(actions_input)], np.array(critic_target),
                             batch_size=settings.TRAINING_BATCH_SIZE, verbose=0, shuffle=False,
                             callbacks=[self.tensorboard] if log_this_step else None)
 
@@ -189,24 +194,24 @@ class ARTDDPGTrainer(ARTDDPGAgent):
         current_states = [np.array([transition[0][0] for transition in minibatch])/255]
 
         with self.graph.as_default():
+            backend.set_session(self.sess)
             current_actions_list = self.actor.predict(current_states, settings.PREDICTION_BATCH_SIZE)
-            gradients = self.action_grads([current_states, actions_input])
-            self.actor_optimizer([current_actions_list, gradients])
+            gradients = self.action_grads([current_states[0], current_actions_list])
+            self.actor_optimizer([current_states[0], gradients[0]])
 
 
         # If step counter reaches set value, update target network with weights of main network
-        if self.tensorboard.step >= self.last_target_update + self.update_target_every.value:
-            W, target_W = self.actor.get_weights(), self.target_actor.get_weights()
-            for i in range(W):
-                target_W[i] = self.tau * W[i] + (1 - self.tau) * target_W[i]
-            self.target_actor.set_weights(target_W)
+        W, target_W = self.actor.get_weights(), self.target_actor.get_weights()
+        for i in range(len(W)):
+            target_W[i] = self.tau * W[i] + (1 - self.tau) * target_W[i]
+        self.target_actor.set_weights(target_W)
 
-            W, target_W = self.critic.get_weights(), self.target_critic.get_weights()
-            for i in range(W):
-                target_W[i] = self.tau * W[i] + (1 - self.tau) * target_W[i]
-            self.target_critic.set_weights(target_W)
+        W, target_W = self.critic.get_weights(), self.target_critic.get_weights()
+        for i in range(len(W)):
+            target_W[i] = self.tau * W[i] + (1 - self.tau) * target_W[i]
+        self.target_critic.set_weights(target_W)
 
-            self.last_target_update += self.update_target_every.value
+        #self.last_target_update += self.update_target_every.value
 
         return True
 
@@ -368,7 +373,7 @@ def check_weights_size(model_path, weights_size_actor, weights_size_critic):
     backend.set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)))
 
     # create a model and save serialized weights' size
-    trainer = ARTDDPGTrainer(model_path)
+    trainer = ARTDDPGTrainer(model_path, None)
     weights = trainer.serialize_weights()
     weights_size_actor.value = len(weights['actor'])
     weights_size_critic.value = len(weights['critic'])
@@ -387,10 +392,11 @@ def run(model_path, logdir, stop, weights_actor, weights_critic, weights_iterati
 
     # Memory fraction
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=settings.TRAINER_MEMORY_FRACTION)
-    backend.set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)))
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+    backend.set_session(sess)
 
     # Create trainer, run second init method and initialize weights so agents can load them
-    trainer = ARTDDPGTrainer(model_path)
+    trainer = ARTDDPGTrainer(model_path, sess)
     trainer.init2(stop, logdir, trainer_stats, episode, epsilon, discount, update_target_every, last_target_update, min_reward, agent_show_preview, save_checkpoint_every, seconds_per_episode, duration, optimizer, models, car_npcs)
     trainer.init_serialized_weights(weights_actor, weights_critic, weights_iteration)
 

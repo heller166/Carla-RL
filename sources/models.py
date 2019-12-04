@@ -284,8 +284,8 @@ def model_head_common_critic_and_actor(model_input, model_output, outputs, model
     prediction = Dense(200, activation='relu')(model_output)
 
     # init weights and biases to ensure policy and values estimates are near zero
-    weights = np.random.uniform(low=-3e-4, high=3e4, size=(200, outputs))
-    biases = np.random.uniform(low=-3e-4, high=3e4, size=(outputs,))
+    weights = np.random.uniform(low=-3e-4, high=3e-4, size=(200, outputs))
+    biases = np.random.uniform(low=-3e-4, high=3e-4, size=(outputs,))
 
     prediction = Dense(outputs, activation='tanh', weights=[weights, biases])(prediction)
 

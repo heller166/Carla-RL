@@ -106,6 +106,7 @@ class CarlaEnv:
 
     # Resets environment for new episode
     def reset(self):
+        self.steps_hard_steering = 0
 
         # Car, sensors, etc. We create them every episode then destroy
         self.actor_list = []
@@ -314,7 +315,7 @@ class CarlaEnv:
             speed_reward = settings.SPEED_MIN_REWARD if kmh < 50 else settings.SPEED_MAX_REWARD
 
         elif settings.WEIGHT_REWARDS_WITH_SPEED == 'linear':
-            speed_reward = kmh
+            speed_reward = kmh / 50
 
         elif settings.WEIGHT_REWARDS_WITH_SPEED == 'quadratic':
             speed_reward = (kmh / 100) ** 1.3 * (
@@ -325,12 +326,12 @@ class CarlaEnv:
 
         reward = speed_reward \
                  - is_collision * 100 \
-                 - self.steps_hard_steering
+        #         - self.steps_hard_steering
 
-        if abs(self.vehicle.get_control().steer) > 0.2:
-            self.steps_hard_steering += 1
-        else:
-            self.steps_hard_steering = 0
+        #if abs(self.vehicle.get_control().steer) > 0.2:
+        #    self.steps_hard_steering += 1
+        #else:
+        #    self.steps_hard_steering = 0
 
 
         # If episode duration limit reached or if collision occured- send back a terminal state
@@ -408,7 +409,7 @@ def start(playing=False):
     # Kill Carla processes if there are any and start simulator
     if settings.CARLA_HOSTS_TYPE == 'local':
         print('Starting Carla...')
-        kill_processes()
+        #kill_processes()
         for process_no in range(1 if playing else settings.CARLA_HOSTS_NO):
             subprocess.Popen(get_exec_command()[1] + f' -carla-rpc-port={settings.CARLA_HOSTS[process_no][1]}',
                              cwd=settings.CARLA_PATH, shell=True)
