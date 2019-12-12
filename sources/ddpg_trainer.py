@@ -42,8 +42,8 @@ class ARTDDPGTrainer(ARTDDPGAgent):
         action_gdts = backend.placeholder(shape=(None, len(settings.ACTIONS)))
         params_grad = tf.gradients(self.actor.output, self.actor.trainable_weights, -action_gdts)
         grads = zip(params_grad, self.actor.trainable_weights)
-        self.actor_optimizer = backend.function([self.actor.input, action_gdts],
-                                                [tf.train.AdamOptimizer(self.get_lr_decay()[0])
+        self.actor_optimizer = backend.function([self.actor.input, action_gdts], [],
+                                                updates=[tf.train.AdamOptimizer(0.0001)
                                                 .apply_gradients(grads)])
 
         self.tau = settings.TAU

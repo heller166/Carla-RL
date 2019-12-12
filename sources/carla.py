@@ -118,7 +118,10 @@ class CarlaEnv:
         while True:
             try:
                 # Get random spot from a list from predefined spots and try to spawn a car there
-                self.transform = random.choice(self.world.get_map().get_spawn_points())
+                if settings.RANDOM_SPAWN:
+                    self.transform = random.choice(self.world.get_map().get_spawn_points())
+                else:
+                    self.transform = self.world.get_map().get_spawn_points()[0]
                 self.vehicle = self.world.spawn_actor(self.model_3, self.transform)
                 break
             except:
@@ -300,7 +303,7 @@ class CarlaEnv:
         # Second element from -1 to 1 is steer
         self.vehicle.apply_control(carla.VehicleControl(throttle=action[0] if action[0] >= 0 else 0,
                                                         steer=action[1],
-                                                        brake=-action[0] if action[0] <= 0  else 0))
+                                                        brake=-action[0] if action[0] <= 0 else 0))
 
         # Calculate speed in km/h from car's velocity (3D vector)
         v = self.vehicle.get_velocity()
@@ -326,12 +329,12 @@ class CarlaEnv:
 
         reward = speed_reward \
                  - is_collision * 100 \
-        #         - self.steps_hard_steering
+                 - self.steps_hard_steering / 50
 
-        #if abs(self.vehicle.get_control().steer) > 0.2:
-        #    self.steps_hard_steering += 1
-        #else:
-        #    self.steps_hard_steering = 0
+        if abs(self.vehicle.get_control().steer) > 0.3:
+            self.steps_hard_steering += 1
+        else:
+            self.steps_hard_steering = 0
 
 
         # If episode duration limit reached or if collision occured- send back a terminal state

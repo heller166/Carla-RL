@@ -105,9 +105,17 @@ if __name__ == '__main__':
         carla_settings_thread.start()
         carla_settings_threads.append([carla_settings_thread, carla_settings])
 
+    #Log dir creation
+    logdir = "logs/{}-{}-{}".format(settings.ALGORITHM, settings.MODEL_NAME, int(time.time()))
+    gifdir = logdir.replace('logs', 'gifs')
+    action_val_dir = logdir.replace('logs', 'act_img')
+    os.makedirs(gifdir, exist_ok=True)
+    os.makedirs(action_val_dir, exist_ok=True)
+
+
     # Start trainer process
     print('Starting trainer...')
-    trainer_process = Process(target=run_trainer, args=(hparams['model_path'] if hparams else False, hparams['logdir'] if hparams else False, stop, weights_actor, weights_critic, weights_iteration, episode, epsilon, discount, update_target_every, last_target_update, min_reward, agent_show_preview, save_checkpoint_every, seconds_per_episode, duration, transitions, tensorboard_stats, trainer_stats, episode_stats, optimizer, hparams['models'] if hparams else [], car_npcs, carla_settings_stats, carla_fps), daemon=True)
+    trainer_process = Process(target=run_trainer, args=(hparams['model_path'] if hparams else False, logdir, stop, weights_actor, weights_critic, weights_iteration, episode, epsilon, discount, update_target_every, last_target_update, min_reward, agent_show_preview, save_checkpoint_every, seconds_per_episode, duration, transitions, tensorboard_stats, trainer_stats, episode_stats, optimizer, hparams['models'] if hparams else [], car_npcs, carla_settings_stats, carla_fps), daemon=True)
     trainer_process.start()
 
     # Wait for trainer to be ready, it needs to, for example, dump weights that agents are going to update
@@ -119,7 +127,7 @@ if __name__ == '__main__':
     agents = []
     for agent in range(settings.AGENTS):
         carla_instance = 1 if not len(settings.AGENT_CARLA_INSTANCE) or settings.AGENT_CARLA_INSTANCE[agent] > settings.CARLA_HOSTS_NO else settings.AGENT_CARLA_INSTANCE[agent]
-        p = Process(target=run_agent, args=(agent, carla_instance-1, stop, pause_agents[agent], episode, epsilon, agent_show_preview[agent], weights_actor, weights_critic, weights_iteration, transitions, tensorboard_stats, agent_stats[agent], carla_frametimes_list[carla_instance-1], seconds_per_episode), daemon=True)
+        p = Process(target=run_agent, args=(agent, gifdir, action_val_dir, carla_instance-1, stop, pause_agents[agent], episode, epsilon, agent_show_preview[agent], weights_actor, weights_critic, weights_iteration, transitions, tensorboard_stats, agent_stats[agent], carla_frametimes_list[carla_instance-1], seconds_per_episode), daemon=True)
         p.start()
         agents.append(p)
 

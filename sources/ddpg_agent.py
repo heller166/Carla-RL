@@ -27,28 +27,24 @@ from keras.models import load_model, Model
 #sys.stdin = stdin
 #sys.stderr = stderr
 
-# Taken from https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py, which is
-# based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
-class OrnsteinUhlenbeckActionNoise:
-    def __init__(self, mu, sigma=0.3, theta=.15, dt=1e-2, x0=None):
+class OrnsteinUhlenbeckProcess(object):
+    """ Ornstein-Uhlenbeck Noise (original code by @slowbull)
+    """
+    def __init__(self, theta=0.15, mu=0, sigma=1, x0=0, dt=1e-2, n_steps_annealing=100, size=1):
         self.theta = theta
-        self.mu = mu
         self.sigma = sigma
-        self.dt = dt
+        self.n_steps_annealing = n_steps_annealing
+        self.sigma_step = - self.sigma / float(self.n_steps_annealing)
         self.x0 = x0
-        self.reset()
+        self.mu = mu
+        self.dt = dt
+        self.size = size
 
-    def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + \
-                self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
-        self.x_prev = x
+    def generate(self, step):
+        sigma = max(0, self.sigma_step * step + self.sigma)
+        x = self.x0 + self.theta * (self.mu - self.x0) * self.dt + sigma * np.sqrt(self.dt) * np.random.normal(size=self.size)
+        self.x0 = x
         return x
-
-    def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
-
-    def __repr__(self):
-        return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
 
 
 # Agent class
@@ -65,7 +61,7 @@ class ARTDDPGAgent(BaseAgent):
         self.actor = self.create_model(prediction=True, is_actor=True)
         self.critic = self.create_model(prediction=True, is_actor=False)
 
-        self.noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(len(settings.ACTIONS)))
+        self.noise = OrnsteinUhlenbeckProcess(size=len(settings.ACTIONS))
 
         # Indicator if currently newest weights are the one agent's model is already using
         self.weights_iteration = 0
@@ -195,7 +191,7 @@ AGENT_STATE_MESSAGE = {
 
 
 # Runs agent process
-def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights_actor, weights_critic, weights_iteration, transitions,
+def run(id, gifdir, action_val_dir, carla_instance, stop, pause, episode, epsilon, show_preview, weights_actor, weights_critic, weights_iteration, transitions,
         tensorboard_stats, agent_stats, carla_frametimes, seconds_per_episode):
 
     # Set GPU used for an agent
@@ -252,6 +248,9 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
     agent_stats[0] = AGENT_STATE.playing
 
     gif_images = []
+    actval_images = []
+
+    total_steps = 1
 
     # Play as long as there is no 'stop' command being issued
     while stop.value != STOP.stopping:
@@ -366,15 +365,18 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
                     time.sleep(0.001)
 
             # Get action from predicted Q values
-            actions = np.clip(agent.get_actions(current_state)[0] + agent.noise(), -1, 1)
+            noise = agent.noise.generate(total_steps)
+            actions_raw = agent.get_actions(current_state)[0]
+            actions = np.clip(actions_raw + noise, -1, 1)
 
             # Log Q values for episode mean
             # TODO: Check how to get these logs squared up
-            #for i in range(env.action_space_size):
-            #    predicted_qs[0].append(qs[0][i])
-            #    predicted_qs[i + 1].append(qs[0][i])
-            #predicted_actions[0] += 1
-            #predicted_actions[action + 1] += 1
+            for i in range(env.action_space_size):
+                predicted_qs[0].append(actions_raw[i])
+                predicted_qs[i + 1].append(actions_raw[i])
+            predicted_actions[0] += 1
+            predicted_actions[1] += 1
+            predicted_actions[2] += 1
 
             # Convcam
             #TODO: understand what convcam is and why we need it
@@ -416,8 +418,13 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
 
             # Show a preview if set (env)
             if show_preview[0] == 1:
-                if episode.value % 1000 == 0:
+                if episode.value % settings.GIF_EVERY_X_EPISODES == 0:
                     gif_images.append(new_state[0])
+                if episode.value % settings.ACTIONVAL_EVERY_X_EPISODES == 0 \
+                        and step % settings.ACTIONVAL_EVERY_X_STEPS == 0:
+                    action_val = agent.get_q(current_state, np.array([actions]))
+                    actval_images.append((current_state[0], actions_raw, step, action_val[0][0], noise))
+
                 cv2.imshow(f'Agent {id+1} - preview', new_state[0])
                 cv2.waitKey(1)
                 env.preview_camera_enabled = False
@@ -488,6 +495,7 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
 
             # Increase step number for next step
             step += 1
+            total_steps += 1
 
             # Frame time, also whole episode time (including sleeping, for agent FPS measurement)
             # Adds to a deque and...
@@ -505,9 +513,23 @@ def run(id, carla_instance, stop, pause, episode, epsilon, show_preview, weights
 
         # We need to check for 'done' flag as episode might end because of an error
         if done:
-            if episode.value % 1000 == 0:
-                imageio.mimsave('gifs/ddpg_{}.gif'.format(episode.value), gif_images, fps=20)
+            if episode.value % settings.GIF_EVERY_X_EPISODES == 0:
+                imageio.mimsave(gifdir + '/ddpg_{}.gif'.format(episode.value), gif_images, fps=20)
+            if episode.value % settings.ACTIONVAL_EVERY_X_EPISODES == 0:
+                episode_dir = action_val_dir + '/episode_{}'.format(episode.value)
+                os.makedirs(episode_dir, exist_ok=True)
+                for image_step_info in actval_images:
+                    imageio.imsave(episode_dir
+                                   + '/ddpg_step_{}_steer_{}_n_{}_TandB_{}_n_{}_value_{}.jpg'
+                                   .format(image_step_info[2],
+                                           image_step_info[1][1],
+                                           image_step_info[4][1],
+                                           image_step_info[1][0],
+                                           image_step_info[4][0],
+                                           image_step_info[3]),
+                                   image_step_info[0])
             gif_images = []
+            actval_images = []
 
             # Duration of current episode
             episode_time = episode_end - episode_start

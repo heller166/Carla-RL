@@ -264,7 +264,7 @@ def model_base_32x3_cnn(input_shape):
 
 # head for ddpg and ddqn actor networks
 def model_head_actor_dd_networks(model_input, model_output, outputs, model_settings):
-    return model_head_common_critic_and_actor(model_input, model_output, outputs, model_settings)
+    return model_head_common_critic_and_actor(model_input, model_output, outputs, False, model_settings)
 
 
 # head for ddpg and ddqn critic networks
@@ -275,11 +275,11 @@ def model_head_critic_dd_networks(model_input, model_output, outputs, model_sett
     merged_output = concatenate([model_output, action_input])
     merged_input = [model_input, action_input]
 
-    return model_head_common_critic_and_actor(merged_input, merged_output, outputs, model_settings)
+    return model_head_common_critic_and_actor(merged_input, merged_output, outputs, True, model_settings)
 
 
 # Common model head for critic and actor. Two fully connected layers with 200 units.
-def model_head_common_critic_and_actor(model_input, model_output, outputs, model_settings):
+def model_head_common_critic_and_actor(model_input, model_output, outputs, is_critic, model_settings):
 
     prediction = Dense(200, activation='relu')(model_output)
 
@@ -287,7 +287,8 @@ def model_head_common_critic_and_actor(model_input, model_output, outputs, model
     weights = np.random.uniform(low=-3e-4, high=3e-4, size=(200, outputs))
     biases = np.random.uniform(low=-3e-4, high=3e-4, size=(outputs,))
 
-    prediction = Dense(outputs, activation='tanh', weights=[weights, biases])(prediction)
+    activation = model_settings['critic_activation'] if is_critic else model_settings['actor_activation']
+    prediction = Dense(outputs, activation=activation, weights=[weights, biases])(prediction)
 
     model = Model(inputs=model_input, outputs=prediction)
 
